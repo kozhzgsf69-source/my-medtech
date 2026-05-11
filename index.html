@@ -153,7 +153,7 @@
     <div id="status"></div>
 
     <script>
-        // 1. ЛОГИКА МИКРОФОНА
+        // 1. ЛОГИКА МИКРОФОНА (Ультра-стабильная версия v3)
         const micBtn = document.getElementById('mic-btn');
         const voiceArea = document.getElementById('voice_text');
         const indicator = document.getElementById('rec-indicator');
@@ -163,43 +163,61 @@
         if (Speech) {
             const rec = new Speech();
             rec.lang = 'ru-RU';
-            rec.continuous = true;
-            rec.interimResults = true;
+            rec.continuous = true;      // Не останавливаться после одной фразы
+            rec.interimResults = true;  // Показывать текст в процессе распознавания
 
             let isRecording = false;
 
-            micBtn.onclick = async () => {
-                try {
-                    // ШАГ 1: Явно просим разрешение у системы
-                    await navigator.mediaDevices.getUserMedia({ audio: true });
-
-                    if (!isRecording) {
+            micBtn.onclick = () => {
+                if (!isRecording) {
+                    try {
                         rec.start();
                         isRecording = true;
                         micBtn.classList.add('recording');
                         indicator.style.visibility = 'visible';
-                        indicator.innerText = "ГОВОРИТЕ...";
-                    } else {
-                        rec.stop();
-                        isRecording = false;
-                        micBtn.classList.remove('recording');
-                        indicator.style.visibility = 'hidden';
-                    }
-                } catch (err) {
-                    // Если тут вылетает audio-capture - значит браузер блокирует доступ
-                    indicator.style.visibility = 'visible';
-                    indicator.innerText = "ОШИБКА: Доступ запрещен. Нажмите на замочек в строке адреса!";
-                    console.error(err);
+                        indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
+                    } catch (e) { console.error(e); }
+                } else {
+                    rec.stop();
+                    isRecording = false;
+                    micBtn.classList.remove('recording');
+                    indicator.style.visibility = 'hidden';
                 }
             };
 
             rec.onresult = (event) => {
-                let text = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    text += event.results[i][0].transcript;
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i].transcript;
+                    } else {
+                        interimTranscript += event.results[i].transcript;
+                    }
                 }
-                voiceArea.value = text;
+
+                // Если есть финальный текст — добавляем его в поле навсегда
+                if (finalTranscript) {
+                    voiceArea.value += (voiceArea.value ? ' ' : '') + finalTranscript;
+                }
+
+                // Временная подсказка, чтобы пациент видел, что его слышат
+                if (interimTranscript) {
+                    indicator.innerText = "РАСПОЗНАЮ: " + interimTranscript;
+                } else {
+                    indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
+                }
             };
+
+            rec.onerror = (event) => {
+                indicator.innerText = "ОШИБКА: " + event.error;
+                console.error(event.error);
+            };
+
+        } else {
+            micBtn.style.display = 'none';
+            voiceArea.placeholder = "Браузер не поддерживает голос.";
         }
 
     </script>

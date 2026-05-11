@@ -153,7 +153,15 @@
     <div id="status"></div>
 
     <script>
-        // 1. ЛОГИКА МИКРОФОНА
+        // 1. НАСТРОЙКИ FIREBASE (оставь свои)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBDKqRxh1zuRNkxtPvsqoTyEOpPtxnAP0M",
+            authDomain: "://firebaseapp.com",
+            projectId: "medformproject",
+            databaseURL: "https://medformproject-default-rtdb.firebaseio.com/anketa.json"
+        };
+
+        // 2. ЛОГИКА МИКРОФОНА (Ультра-стабильная версия)
         const micBtn = document.getElementById('mic-btn');
         const voiceArea = document.getElementById('voice_text');
         const indicator = document.getElementById('rec-indicator');
@@ -164,20 +172,26 @@
             const rec = new Speech();
             rec.lang = 'ru-RU';
             rec.continuous = true;
-            rec.interimResults = true; // Видим текст в процессе говорения
+            rec.interimResults = true;
 
             let isRecording = false;
 
-            micBtn.onclick = () => {
+            micBtn.onclick = async () => {
                 if (!isRecording) {
                     try {
+                        // ШАГ 1: Явно запрашиваем доступ у браузера перед стартом записи
+                        await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                        // ШАГ 2: Если доступ есть, запускаем распознавание
                         rec.start();
                         isRecording = true;
                         micBtn.classList.add('recording');
                         indicator.style.visibility = 'visible';
                         indicator.innerText = "СЛУШАЮ...";
-                    } catch (e) {
-                        console.error("Ошибка старта:", e);
+                        console.log("Запись началась...");
+                    } catch (err) {
+                        indicator.innerText = "ОШИБКА: Доступ к микрофону заблокирован";
+                        console.error("Ошибка доступа:", err);
                     }
                 } else {
                     rec.stop();
@@ -187,42 +201,40 @@
                 }
             };
 
+            // Исправленный обработчик результата - теперь он точно будет писать в поле
             rec.onresult = (event) => {
-                let final_transcript = '';
+                let finalTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        final_transcript += event.results[i][0].transcript;
+                        finalTranscript += event.results[i].transcript;
                     }
                 }
-                // Если текст распознан, добавляем его в поле
-                if (final_transcript) {
-                    voiceArea.value += final_transcript + ' ';
+                if (finalTranscript) {
+                    voiceArea.value += (voiceArea.value ? ' ' : '') + finalTranscript.trim() + '.';
                 }
             };
 
             rec.onerror = (event) => {
-                console.error("Ошибка распознавания:", event.error);
-                indicator.innerText = "ОШИБКА: " + event.error;
-                isRecording = false;
-                micBtn.classList.remove('recording');
-            };
-
-            rec.onend = () => {
-                // Если запись прервалась сама (пауза), но кнопка всё еще в режиме записи - перезапускаем
-                if (isRecording) rec.start();
+                console.error("Speech Recognition Error:", event.error);
+                if (event.error === 'no-speech') {
+                    indicator.innerText = "Голос не распознан, попробуйте еще раз";
+                } else {
+                    indicator.innerText = "Ошибка: " + event.error;
+                    isRecording = false;
+                    micBtn.classList.remove('recording');
+                }
             };
 
         } else {
             micBtn.style.display = 'none';
-            voiceArea.placeholder = "Ваш браузер не поддерживает голосовой ввод.";
+            voiceArea.placeholder = "Браузер не поддерживает распознавание речи.";
         }
 
-
-        // 2. ОТПРАВКА ДАННЫХ
+        // 3. ОТПРАВКА ДАННЫХ (REST API)
         async function sendData() {
             const status = document.getElementById('status');
             const name = document.getElementById('p_name').value || "Аноним";
-            const voice = document.getElementById('voice_text').value;
+            const voice = voiceArea.value; // Берем текст из текстового поля
 
             const results = [];
             if (document.getElementById('c_pain').value === 'yes') {
@@ -233,12 +245,12 @@
             status.style.color = "blue";
 
             try {
-                const response = await fetch("https://firebaseio.com", {
+                const response = await fetch("https://firebaseio.com/visits.json", {
                     method: "POST",
                     body: JSON.stringify({
                         name: name,
                         results: results,
-                        voiceData: voice, // Передаем надиктованный текст
+                        voiceData: voice, // Поле для бабушкиного анамнеза
                         timestamp: Date.now()
                     }),
                     headers: { "Content-Type": "application/json" }
@@ -253,6 +265,7 @@
                 status.innerText = "❌ Ошибка сети: " + e.message;
             }
         }
+
     </script>
 </body>
 

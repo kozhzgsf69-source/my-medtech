@@ -185,42 +185,42 @@
                 }
             };
 
-         rec.onresult = (event) => {
-    let finalTranscript = '';
-    
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-        // Добавляем проверку, что данные вообще существуют
-        if (event.results[i] && event.results[i][0]) {
-            let text = event.results[i][0].transcript; // Добавили индекс [0]
-            if (event.results[i].isFinal) {
-                finalTranscript += text;
-            }
-        }
-    }
+            rec.onresult = (event) => {
+                let finalTranscript = '';
 
-    if (finalTranscript) {
-        // Убираем слово undefined и просто склеиваем текст
-        voiceArea.value = (voiceArea.value + ' ' + finalTranscript).trim();
-    }
-};
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    // Добавляем проверку, что данные вообще существуют
+                    if (event.results[i] && event.results[i][0]) {
+                        let text = event.results[i][0].transcript; // Добавили индекс [0]
+                        if (event.results[i].isFinal) {
+                            finalTranscript += text;
+                        }
+                    }
+                }
 
-                // Если есть финальный текст — добавляем его в поле навсегда
                 if (finalTranscript) {
-                    voiceArea.value += (voiceArea.value ? ' ' : '') + finalTranscript;
-                }
-
-                // Временная подсказка, чтобы пациент видел, что его слышат
-                if (interimTranscript) {
-                    indicator.innerText = "РАСПОЗНАЮ: " + interimTranscript;
-                } else {
-                    indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
+                    // Убираем слово undefined и просто склеиваем текст
+                    voiceArea.value = (voiceArea.value + ' ' + finalTranscript).trim();
                 }
             };
 
-            rec.onerror = (event) => {
-                indicator.innerText = "ОШИБКА: " + event.error;
-                console.error(event.error);
-            };
+            // Если есть финальный текст — добавляем его в поле навсегда
+            if (finalTranscript) {
+                voiceArea.value += (voiceArea.value ? ' ' : '') + finalTranscript;
+            }
+
+            // Временная подсказка, чтобы пациент видел, что его слышат
+            if (interimTranscript) {
+                indicator.innerText = "РАСПОЗНАЮ: " + interimTranscript;
+            } else {
+                indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
+            }
+        };
+
+        rec.onerror = (event) => {
+            indicator.innerText = "ОШИБКА: " + event.error;
+            console.error(event.error);
+        };
 
         } else {
             micBtn.style.display = 'none';

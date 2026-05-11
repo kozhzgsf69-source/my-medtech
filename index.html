@@ -166,55 +166,64 @@
             rec.continuous = true;      // Не останавливаться после одной фразы
             rec.interimResults = true;  // Показывать текст в процессе распознавания
 
-            let isRecording = false;
+        let isRecording = false;
+        let baseTranscript = '';
 
-            micBtn.onclick = () => {
-                if (!isRecording) {
-                    try {
-                        rec.start();
-                        isRecording = true;
-                        micBtn.classList.add('recording');
-                        indicator.style.visibility = 'visible';
-                        indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
-                    } catch (e) { console.error(e); }
-                } else {
-                    rec.stop();
-                    isRecording = false;
-                    micBtn.classList.remove('recording');
-                    indicator.style.visibility = 'hidden';
-                }
-            };
+        micBtn.onclick = () => {
+            if (!isRecording) {
+                try {
+                    baseTranscript = voiceArea.value; // Сохраняем текущий текст
+                    rec.start();
+                    isRecording = true;
+                    micBtn.classList.add('recording');
+                    indicator.style.visibility = 'visible';
+                    indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
+                } catch (e) { console.error(e); }
+            } else {
+                rec.stop();
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                indicator.style.visibility = 'hidden';
+            }
+        };
 
-            rec.onresult = (event) => {
-                let finalTranscript = '';
+        rec.onresult = (event) => {
+            let finalTranscript = '';
+            let interimTranscript = '';
 
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    // Добавляем проверку, что данные вообще существуют
-                    if (event.results[i] && event.results[i][0]) {
-                        let text = event.results[i][0].transcript; // Добавили индекс [0]
-                        if (event.results[i].isFinal) {
-                            finalTranscript += text;
-                        }
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i] && event.results[i][0]) {
+                    let text = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += text;
+                    } else {
+                        interimTranscript += text;
                     }
                 }
-
-                if (finalTranscript) {
-                    // Убираем слово undefined и просто склеиваем текст
-                    voiceArea.value = (voiceArea.value + ' ' + finalTranscript).trim();
-                }
-            };
-
-            // Если есть финальный текст — добавляем его в поле навсегда
-            if (finalTranscript) {
-                voiceArea.value += (voiceArea.value ? ' ' : '') + finalTranscript;
             }
 
-            // Временная подсказка, чтобы пациент видел, что его слышат
+            // Добавляем финальный текст к base
+            if (finalTranscript) {
+                baseTranscript += (baseTranscript ? ' ' : '') + finalTranscript;
+            }
+
+            // Обновляем textarea с base + interim
+            voiceArea.value = baseTranscript + (interimTranscript ? (baseTranscript ? ' ' : '') + interimTranscript : '');
+
+            // Показываем interim текст в индикаторе
             if (interimTranscript) {
                 indicator.innerText = "РАСПОЗНАЮ: " + interimTranscript;
             } else {
                 indicator.innerText = "СЛУШАЮ... ГОВОРИТЕ";
             }
+        };
+        };
+
+        rec.onend = () => {
+            isRecording = false;
+            micBtn.classList.remove('recording');
+            indicator.style.visibility = 'hidden';
+            voiceArea.value = baseTranscript; // Убираем interim при остановке
         };
 
         rec.onerror = (event) => {
